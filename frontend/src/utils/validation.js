@@ -5,8 +5,8 @@
 
 import { getTodayDateString } from './date';
 
-// Regex allowing English letters and single spaces between words
-export const NAME_REGEX = /^[A-Za-z]+(?: [A-Za-z]+)*$/;
+// Regex allowing English and international unicode letters and single spaces
+export const NAME_REGEX = /^\p{L}+(?: \p{L}+)*$/u;
 
 export function validatePatientForm(formData, departmentDoctors = {}) {
   const errors = {};

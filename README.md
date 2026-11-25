@@ -5,15 +5,27 @@
 
 ---
 
+## 🔗 Official Submission Links
+
+- **Public GitHub Repository**: [https://github.com/saipranav22-commits/wardflow-patient-management](https://github.com/saipranav22-commits/wardflow-patient-management)
+- **Interactive Backend API Documentation (Swagger)**: `http://localhost:8000/docs` (Local) / `/docs` (Deployed)
+- **Local Application URL**: `http://localhost:5173`
+
+---
+
 ## 📸 Application Preview
 
-| Desktop Patient Directory | Mobile Cards View (< 768px) |
+| Desktop Patient Directory (1440x900) | Mobile Cards View (390x844) |
 |---|---|
 | ![Desktop View](docs/screenshots/01_desktop_directory.png) | ![Mobile View](docs/screenshots/03_mobile_cards.png) |
 
-| Patient Admission Form | Validation & Boundary Rejection |
+| Patient Admission Form Modal | Real-Time Field Validation Rejection |
 |---|---|
 | ![Admission Form](docs/screenshots/04_admission_form.png) | ![Validation State](docs/screenshots/05_validation_errors.png) |
+
+| Tablet Layout (768x1024) | Discharge Confirmation Dialog |
+|---|---|
+| ![Tablet View](docs/screenshots/02_tablet_view.png) | ![Discharge Confirmation](docs/screenshots/07_discharge_confirmation.png) |
 
 ---
 
@@ -43,8 +55,8 @@ WardFlow is a focused, production-grade web application designed for hospital re
 - **Backend**: **Python 3.13**, **FastAPI 0.115**, **Pydantic V2**, **SQLAlchemy 2.x**, **Uvicorn**, **Psycopg 3**. *(Strictly NO Node.js used on the backend).*
 - **Database**:
   - **Local Development**: Persistent SQLite (`patients.db`) with disk storage surviving process restarts.
-  - **Production Deployment**: Hosted **PostgreSQL (Neon)** with TLS encryption and connection pooling.
-- **Testing**: **Pytest** with 22 automated integration tests covering boundary conditions, validation rejections, CRUD workflows, and connection restart persistence.
+  - **Production Deployment**: Hosted **PostgreSQL (Neon)** with TLS encryption and connection pooling. Fail-safe protection prohibits silent SQLite fallback in production.
+- **Testing**: **Pytest** with 31 automated integration tests (100% pass rate in 0.83s) + **Playwright** with 15 end-to-end browser workflows.
 
 ---
 
@@ -83,8 +95,8 @@ graph LR
 
 | Field | Rule | Frontend Behavior | Backend Behavior |
 |---|---|---|---|
-| **Name** | Required, letters and spaces only (1–100 chars). No numbers, punctuation, or whitespace-only names. | Regex check; red error text below input. | Pydantic regex validator; returns HTTP 422 with field-specific detail. |
-| **Age** | Required whole integer between **0** and **120** inclusive. | Rejects negative, >120, decimals, or text. | Custom validator rejects boolean (`True`/`False`), floats, strings, or values < 0 or > 120. |
+| **Name** | Required, letters and spaces only (1–100 chars, Unicode letters supported). No numbers, punctuation, or whitespace-only names. | Regex check; red error text below input. | Pydantic regex validator; returns HTTP 422 with field-specific detail. |
+| **Age** | Required whole integer between **0** and **120** inclusive. | Rejects negative, >120, decimals, or text. Age 0 preserved as valid. | Custom validator rejects boolean (`True`/`False`), floats, strings, or values < 0 or > 120. |
 | **Gender** | Required from approved list: `Male`, `Female`, `Other`, `Prefer not to say`. | Native select dropdown. | Enforced against `GENDERS` constant. |
 | **Ward** | Required from approved list (General, Private, ICU, Surgical, Pediatric, Maternity). | Native select dropdown. | Enforced against `WARDS` constant. |
 | **Department** | Required from approved clinical list. | Changing department auto-resets incompatible doctor. | Enforced against `DEPARTMENTS` constant. |
@@ -103,7 +115,7 @@ graph LR
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/<your-username>/wardflow-patient-management.git
+git clone https://github.com/saipranav22-commits/wardflow-patient-management.git
 cd wardflow-patient-management
 ```
 
@@ -144,19 +156,28 @@ Open your browser at `http://localhost:5173`. The application is fully connected
 
 ---
 
-## 🧪 Running Tests
+## 🧪 Running Automated Tests
 
-### Backend Unit & Integration Tests (22 Tests)
+### Backend Unit & Integration Tests (31 Tests Passed in 0.83s)
 ```bash
 cd backend
 .\venv\Scripts\pytest -v
 ```
-All 22 automated tests verify:
+All 31 automated tests verify:
 - Boundary conditions (Age 0 for newborns, Age 120 for centenarians)
 - Rejection of negative ages, boolean ages, future admission dates, invalid wards, and doctor-department mismatches
+- Missing required fields rejection across every field
+- Fractional age rejection and malformed date rejection
 - Multi-dimensional search and combined filters (AND logic)
 - Edit, discharge, idempotent discharge, and delete workflows
+- Nonexistent patient IDs return HTTP 404
 - Database persistence surviving complete connection teardown
+
+### End-to-End Browser Tests (15 Workflows)
+```bash
+python docs/capture_and_audit.py
+```
+Verifies desktop, tablet, and mobile views, modal keyboard accessibility, validation errors, edit validation, discharge cancellation/confirmation, and delete cancellation/confirmation.
 
 ---
 

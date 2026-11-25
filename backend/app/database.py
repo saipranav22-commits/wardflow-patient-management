@@ -8,6 +8,7 @@ from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 
+APP_ENV = os.getenv("APP_ENV", "development")
 # Fetch database connection URL from environment
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./patients.db")
 
@@ -16,6 +17,13 @@ if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 is_sqlite = DATABASE_URL.startswith("sqlite")
+
+# Fail-fast safety: Prevent silent SQLite fallback in production
+if APP_ENV.lower() == "production" and is_sqlite:
+    raise RuntimeError(
+        "Production environment requires a valid PostgreSQL DATABASE_URL. "
+        "Silent fallback to SQLite is strictly forbidden in production."
+    )
 
 engine_kwargs = {}
 if is_sqlite:

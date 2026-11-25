@@ -3,7 +3,12 @@
  * Communicates with FastAPI backend with AbortController support and unified error parsing.
  */
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
+// Normalize API base URL: remove trailing slashes and redundant '/api' suffix to prevent duplicate '/api/api' paths
+let rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '');
+if (rawBase.endsWith('/api')) {
+  rawBase = rawBase.slice(0, -4);
+}
+const API_BASE_URL = rawBase;
 
 class ApiError extends Error {
   constructor(message, status, fieldErrors = {}) {

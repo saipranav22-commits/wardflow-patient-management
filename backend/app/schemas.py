@@ -16,9 +16,9 @@ from app.constants import (
     get_all_doctors,
 )
 
-# Regex allowing English and international unicode alphabetic letters and single spaces
+# Regex allowing English and international unicode letters and single spaces
 # No digits, punctuation, or symbols allowed.
-NAME_REGEX = re.compile(r"^[A-Za-z]+(?: [A-Za-z]+)*$")
+NAME_REGEX = re.compile(r"^[^\W\d_]+(?: [^\W\d_]+)*$", re.UNICODE)
 
 
 def get_current_kolkata_date() -> date:

@@ -20,6 +20,46 @@ export default function Header({ onOpenAdmit, onRefresh, isRefreshing, systemSta
       </div>
 
       <div className="header-actions">
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.4rem',
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            padding: '0.35rem 0.65rem',
+            borderRadius: 'var(--radius-full)',
+            background:
+              systemStatus === 'healthy'
+                ? 'var(--admitted-bg)'
+                : systemStatus === 'error'
+                ? 'var(--danger-light)'
+                : 'var(--warning-bg)',
+            color:
+              systemStatus === 'healthy'
+                ? 'var(--admitted-text)'
+                : systemStatus === 'error'
+                ? 'var(--danger)'
+                : 'var(--warning-text)',
+            border: '1px solid currentColor',
+          }}
+          title={`Backend status: ${systemStatus}`}
+        >
+          <span
+            style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              backgroundColor: 'currentColor',
+            }}
+          />
+          {systemStatus === 'healthy'
+            ? 'API Online'
+            : systemStatus === 'error'
+            ? 'API Offline'
+            : 'Connecting...'}
+        </div>
+
         <button
           type="button"
           className="btn btn-secondary"

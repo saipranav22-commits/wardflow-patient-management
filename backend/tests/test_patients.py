@@ -357,3 +357,122 @@ def test_persistence_across_connection_restarts(client):
     session2.delete(fetched)
     session2.commit()
     session2.close()
+
+
+# 9. Extended Validation Gap Tests
+def test_reject_missing_required_fields(client):
+    """Test that missing mandatory fields are rejected with 422"""
+    # Missing name
+    res = client.post("/api/patients", json={"age": 30, "gender": "Male", "ward": "ICU", "department": "Cardiology", "doctor": "Dr. Arvind Kumar", "admission_date": "2026-11-20"})
+    assert res.status_code == 422
+    assert "name" in res.json().get("errors", {})
+
+    # Missing age
+    res = client.post("/api/patients", json={"name": "Aarav", "gender": "Male", "ward": "ICU", "department": "Cardiology", "doctor": "Dr. Arvind Kumar", "admission_date": "2026-11-20"})
+    assert res.status_code == 422
+    assert "age" in res.json().get("errors", {})
+
+    # Missing gender
+    res = client.post("/api/patients", json={"name": "Aarav", "age": 30, "ward": "ICU", "department": "Cardiology", "doctor": "Dr. Arvind Kumar", "admission_date": "2026-11-20"})
+    assert res.status_code == 422
+    assert "gender" in res.json().get("errors", {})
+
+    # Missing ward
+    res = client.post("/api/patients", json={"name": "Aarav", "age": 30, "gender": "Male", "department": "Cardiology", "doctor": "Dr. Arvind Kumar", "admission_date": "2026-11-20"})
+    assert res.status_code == 422
+    assert "ward" in res.json().get("errors", {})
+
+    # Missing department
+    res = client.post("/api/patients", json={"name": "Aarav", "age": 30, "gender": "Male", "ward": "ICU", "doctor": "Dr. Arvind Kumar", "admission_date": "2026-11-20"})
+    assert res.status_code == 422
+    assert "department" in res.json().get("errors", {})
+
+    # Missing doctor
+    res = client.post("/api/patients", json={"name": "Aarav", "age": 30, "gender": "Male", "ward": "ICU", "department": "Cardiology", "admission_date": "2026-11-20"})
+    assert res.status_code == 422
+    assert "doctor" in res.json().get("errors", {})
+
+    # Missing admission date
+    res = client.post("/api/patients", json={"name": "Aarav", "age": 30, "gender": "Male", "ward": "ICU", "department": "Cardiology", "doctor": "Dr. Arvind Kumar"})
+    assert res.status_code == 422
+    assert "admission_date" in res.json().get("errors", {})
+
+
+def test_reject_fractional_age(client):
+    payload = get_valid_payload()
+    payload["age"] = 25.5
+    res = client.post("/api/patients", json=payload)
+    assert res.status_code == 422
+    assert "age" in res.json().get("errors", {})
+
+
+def test_reject_malformed_admission_date(client):
+    payload = get_valid_payload()
+    payload["admission_date"] = "2026-99-99"
+    res = client.post("/api/patients", json=payload)
+    assert res.status_code == 422
+    assert "admission_date" in res.json().get("errors", {})
+
+
+def test_reject_invalid_department(client):
+    payload = get_valid_payload()
+    payload["department"] = "Nonexistent Department"
+    res = client.post("/api/patients", json=payload)
+    assert res.status_code == 422
+    assert "department" in res.json().get("errors", {})
+
+
+def test_reject_invalid_doctor(client):
+    payload = get_valid_payload()
+    payload["doctor"] = "Dr. Unregistered Doctor"
+    res = client.post("/api/patients", json=payload)
+    assert res.status_code == 422
+    assert "doctor" in res.json().get("errors", {})
+
+
+def test_reject_invalid_status(client):
+    payload = get_valid_payload()
+    payload["status"] = "PendingApproval"
+    res = client.post("/api/patients", json=payload)
+    assert res.status_code == 422
+    assert "status" in res.json().get("errors", {})
+
+
+def test_nonexistent_patient_id_operations(client):
+    """Test 404 responses on nonexistent patient IDs"""
+    non_existent_id = 999999
+    assert client.get(f"/api/patients/{non_existent_id}").status_code == 404
+    assert client.put(f"/api/patients/{non_existent_id}", json=get_valid_payload()).status_code == 404
+    assert client.patch(f"/api/patients/{non_existent_id}/discharge").status_code == 404
+    assert client.delete(f"/api/patients/{non_existent_id}").status_code == 404
+
+
+def test_edit_with_invalid_data_rejected(client):
+    """Ensure invalid data cannot bypass validation during edit"""
+    created = client.post("/api/patients", json=get_valid_payload()).json()
+    p_id = created["id"]
+
+    # Try updating with future date
+    tomorrow = get_current_kolkata_date() + timedelta(days=1)
+    bad_payload = get_valid_payload()
+    bad_payload["admission_date"] = tomorrow.isoformat()
+    res = client.put(f"/api/patients/{p_id}", json=bad_payload)
+    assert res.status_code == 422
+
+    # Try updating with negative age
+    bad_payload2 = get_valid_payload()
+    bad_payload2["age"] = -5
+    res2 = client.put(f"/api/patients/{p_id}", json=bad_payload2)
+    assert res2.status_code == 422
+
+
+def test_clear_field_specific_error_format(client):
+    """Verify clean dictionary mapping of field errors for frontend display"""
+    res = client.post("/api/patients", json={"name": "123", "age": -10})
+    assert res.status_code == 422
+    data = res.json()
+    assert "errors" in data
+    assert isinstance(data["errors"], dict)
+    assert "name" in data["errors"]
+    assert "age" in data["errors"]
+    assert len(data["detail"]) > 0
