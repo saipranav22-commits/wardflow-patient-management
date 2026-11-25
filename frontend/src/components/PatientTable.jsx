@@ -1,5 +1,5 @@
 import React from 'react';
-import { Edit2, CheckCircle2, Trash2, Bed, SearchX, UserPlus } from 'lucide-react';
+import { Edit2, CheckCircle2, Trash2, Bed, SearchX, UserPlus, AlertCircle, RefreshCw } from 'lucide-react';
 import { formatDateReadable } from '../utils/date';
 
 export default function PatientTable({
@@ -15,33 +15,55 @@ export default function PatientTable({
   onSeedDemo,
   hasActiveFilters,
 }) {
-  if (isLoading) {
+  // If actively loading data
+  if (isLoading && patients.length === 0) {
     return (
       <div className="state-container">
         <div className="spinner" />
-        <h3 className="state-title">Loading patient records...</h3>
-        <p className="state-description">Retrieving admission data from the database.</p>
+        <h3 className="state-title">Loading patient directory...</h3>
+        <p className="state-description">
+          Connecting to hospital database and retrieving inpatient records.
+        </p>
       </div>
     );
   }
 
+  // Handle server cold start / connection error state
   if (systemStatus === 'error' && patients.length === 0) {
     return (
       <div className="state-container">
-        <div className="state-icon-circle" style={{ background: 'var(--warning-bg)', color: 'var(--warning-text)' }}>
-          <Bed size={28} />
+        <div
+          className="state-icon-circle"
+          style={{ background: 'var(--warning-bg)', color: 'var(--warning-text)' }}
+        >
+          <AlertCircle size={28} />
         </div>
-        <h3 className="state-title">Connecting to hospital service...</h3>
+        <h3 className="state-title">Hospital Service is Waking Up</h3>
         <p className="state-description">
-          The demonstration backend is waking up from free-tier sleep (typically takes 30–50 seconds on cold start).
+          The cloud demonstration backend is spinning up from free-tier sleep (typically takes 30–50 seconds on cold start). Automatic reconnection is in progress.
         </p>
         <button type="button" className="btn btn-primary" onClick={onRetry}>
-          Retry Connection
+          <RefreshCw size={16} />
+          <span>Retry Connection Now</span>
         </button>
       </div>
     );
   }
 
+  // Connecting state
+  if (systemStatus === 'connecting' && patients.length === 0) {
+    return (
+      <div className="state-container">
+        <div className="spinner" />
+        <h3 className="state-title">Connecting to hospital service...</h3>
+        <p className="state-description">
+          Establishing connection to the cloud backend. Please wait a moment while records load.
+        </p>
+      </div>
+    );
+  }
+
+  // Empty state: ONLY shown when connection is verified healthy
   if (patients.length === 0) {
     if (hasActiveFilters) {
       return (
@@ -177,17 +199,17 @@ export default function PatientTable({
         </table>
       </div>
 
-      {/* Mobile Cards (Screens < 768px) */}
-      <div className="mobile-cards-list">
+      {/* Mobile Card Layout */}
+      <div className="mobile-cards-list" aria-label="Inpatient Directory Cards">
         {patients.map((p) => {
           const isDischarged = p.status === 'Discharged';
           return (
-            <div key={p.id} className="patient-card" id={`patient-card-${p.id}`}>
+            <article key={p.id} className="patient-card">
               <div className="patient-card-header">
                 <div>
-                  <div className="card-patient-name">{p.name}</div>
-                  <div className="card-patient-sub">
-                    {p.age} years old · {p.gender}
+                  <h3 className="patient-card-name">{p.name}</h3>
+                  <div className="patient-card-demographics">
+                    {p.age} yrs · {p.gender}
                   </div>
                 </div>
                 <span
@@ -200,57 +222,60 @@ export default function PatientTable({
                 </span>
               </div>
 
-              <div className="card-grid-details">
-                <div className="card-detail-item">
-                  <span className="card-detail-label">Ward</span>
-                  <span className="card-detail-val">{p.ward}</span>
-                </div>
-                <div className="card-detail-item">
-                  <span className="card-detail-label">Admitted On</span>
-                  <span className="card-detail-val">{formatDateReadable(p.admission_date)}</span>
-                </div>
-                <div className="card-detail-item" style={{ gridColumn: '1 / -1' }}>
-                  <span className="card-detail-label">Department & Doctor</span>
-                  <span className="card-detail-val">
-                    {p.doctor} ({p.department})
+              <div className="patient-card-body">
+                <div className="patient-card-row">
+                  <span className="patient-card-label">Hospital Ward</span>
+                  <span className="patient-card-val" style={{ fontWeight: 600 }}>
+                    {p.ward}
                   </span>
+                </div>
+                <div className="patient-card-row">
+                  <span className="patient-card-label">Department</span>
+                  <span className="patient-card-val">{p.department}</span>
+                </div>
+                <div className="patient-card-row">
+                  <span className="patient-card-label">Admitting Doctor</span>
+                  <span className="patient-card-val">{p.doctor}</span>
+                </div>
+                <div className="patient-card-row">
+                  <span className="patient-card-label">Admission Date</span>
+                  <span className="patient-card-val">{formatDateReadable(p.admission_date)}</span>
                 </div>
               </div>
 
-              <div className="card-actions-row">
+              <div className="patient-card-actions">
                 <button
                   type="button"
                   className="btn btn-secondary"
+                  style={{ flex: 1, padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}
                   onClick={() => onEdit(p)}
-                  aria-label={`Edit ${p.name}`}
                 >
                   <Edit2 size={14} />
                   <span>Edit</span>
                 </button>
 
-                {!isDischarged && (
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => onDischargeClick(p)}
-                    aria-label={`Discharge ${p.name}`}
-                  >
-                    <CheckCircle2 size={14} />
-                    <span>Discharge</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  style={{ flex: 1, padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}
+                  onClick={() => onDischargeClick(p)}
+                  disabled={isDischarged}
+                >
+                  <CheckCircle2 size={14} />
+                  <span>{isDischarged ? 'Discharged' : 'Discharge'}</span>
+                </button>
 
                 <button
                   type="button"
-                  className="btn btn-outline-danger"
+                  className="btn btn-danger"
+                  style={{ padding: '0.5rem 0.75rem', fontSize: '0.8125rem' }}
                   onClick={() => onDeleteClick(p)}
-                  aria-label={`Delete ${p.name}`}
+                  aria-label={`Delete record for ${p.name}`}
                 >
                   <Trash2 size={14} />
-                  <span>Delete</span>
                 </button>
               </div>
-            </div>
+            </article>
           );
         })}
       </div>

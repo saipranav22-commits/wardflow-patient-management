@@ -10,7 +10,7 @@ import { api } from './services/api';
 
 export default function App() {
   const [patients, setPatients] = useState([]);
-  const [stats, setStats] = useState({ total_patients: 0, currently_admitted: 0, discharged: 0 });
+  const [stats, setStats] = useState(null);
   const [options, setOptions] = useState({
     genders: [],
     wards: [],
@@ -30,7 +30,7 @@ export default function App() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [systemStatus, setSystemStatus] = useState('connecting');
+  const [systemStatus, setSystemStatus] = useState('connecting'); // 'connecting' | 'healthy' | 'error'
 
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -74,12 +74,13 @@ export default function App() {
       setOptions(optsData);
       setStats(statsData);
       setSystemStatus('healthy');
+      return true;
     } catch (err) {
       console.error('Failed to load initial master data:', err);
       setSystemStatus('error');
-      addToast(err.message || 'Could not connect to the hospital service.', 'error');
+      return false;
     }
-  }, [addToast]);
+  }, []);
 
   useEffect(() => {
     loadInitialData();
@@ -102,9 +103,11 @@ export default function App() {
     try {
       const data = await api.getPatients(currentFilters, controller.signal);
       setPatients(data);
+      setSystemStatus('healthy');
     } catch (err) {
       if (err.name === 'AbortError') return;
       console.error('Error fetching patients:', err);
+      setSystemStatus('error');
       addToast(err.message || 'Failed to fetch patients list.', 'error');
     } finally {
       setIsLoading(false);
@@ -117,6 +120,7 @@ export default function App() {
     try {
       const statsData = await api.getStats();
       setStats(statsData);
+      setSystemStatus('healthy');
     } catch (err) {
       console.error('Error refreshing statistics:', err);
     }
@@ -139,6 +143,43 @@ export default function App() {
       }
     };
   }, [filters, loadPatients]);
+
+  // Automatic Cold-Start Recovery Loop:
+  // If the cloud backend was sleeping and initial requests failed, automatically retry in the background
+  const retryCountRef = useRef(0);
+  useEffect(() => {
+    if (systemStatus !== 'error') {
+      retryCountRef.current = 0;
+      return;
+    }
+
+    if (retryCountRef.current >= 5) {
+      return; // Stop after 5 background reconnection cycles
+    }
+
+    const timer = setTimeout(async () => {
+      retryCountRef.current += 1;
+      console.info(`[App] Auto-reconnecting to hospital backend (attempt ${retryCountRef.current}/5)...`);
+      setSystemStatus('connecting');
+      const success = await loadInitialData();
+      if (success) {
+        await loadPatients(filters);
+      } else {
+        setSystemStatus('error');
+      }
+    }, 6000);
+
+    return () => clearTimeout(timer);
+  }, [systemStatus, filters, loadInitialData, loadPatients]);
+
+  // Manual retry handler
+  const handleManualRetry = useCallback(() => {
+    setSystemStatus('connecting');
+    retryCountRef.current = 0;
+    loadInitialData().then((ok) => {
+      loadPatients(filters);
+    });
+  }, [filters, loadInitialData, loadPatients]);
 
   // Filter change handlers
   const handleFilterChange = (updates) => {
@@ -315,25 +356,21 @@ export default function App() {
             role="alert"
           >
             <div>
-              <strong>Demo server is waking up:</strong> Render free-tier services spin down after inactivity and may take 30–50 seconds to wake up on the first visit.
+              <strong>Hospital backend is waking up:</strong> Free-tier cloud services spin down after inactivity and typically take 30–50 seconds to complete cold start. Automatic reconnection is running in the background.
             </div>
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={() => {
-                setSystemStatus('connecting');
-                loadInitialData();
-                loadPatients();
-              }}
+              onClick={handleManualRetry}
               style={{ fontSize: '0.8125rem', padding: '0.4rem 0.8rem', minHeight: '34px' }}
             >
-              Retry Connection
+              Retry Connection Now
             </button>
           </div>
         )}
 
-        {/* Metric Cards */}
-        <StatsCards stats={stats} isLoading={isLoading && patients.length === 0} />
+        {/* Metric Cards: Displays em-dash during disconnection, never misleading 0 */}
+        <StatsCards stats={stats} isLoading={isLoading && !stats} systemStatus={systemStatus} />
 
         {/* Workspace Card: Filters + Patient Table */}
         <section className="workspace-card" aria-label="Patient Admissions Directory">
@@ -343,18 +380,14 @@ export default function App() {
             onClearFilters={handleClearFilters}
             options={options}
             resultCount={patients.length}
-            totalCount={stats?.total_patients ?? 0}
+            totalCount={systemStatus === 'healthy' && stats ? stats.total_patients : patients.length}
           />
 
           <PatientTable
             patients={patients}
             isLoading={isLoading}
             systemStatus={systemStatus}
-            onRetry={() => {
-              setSystemStatus('connecting');
-              loadInitialData();
-              loadPatients();
-            }}
+            onRetry={handleManualRetry}
             onEdit={handleEdit}
             onDischargeClick={handleDischargeClick}
             onDeleteClick={handleDeleteClick}
