@@ -7,8 +7,10 @@
 
 ## 🔗 Official Submission Links
 
+- **Live Working Application**: [https://wardflow-patient-management.onrender.com](https://wardflow-patient-management.onrender.com)
+- **Live Backend API**: [https://wardflow-app.onrender.com](https://wardflow-app.onrender.com)
+- **Interactive Backend API Documentation (Swagger)**: [https://wardflow-app.onrender.com/docs](https://wardflow-app.onrender.com/docs)
 - **Public GitHub Repository**: [https://github.com/saipranav22-commits/wardflow-patient-management](https://github.com/saipranav22-commits/wardflow-patient-management)
-- **Interactive Backend API Documentation (Swagger)**: `http://localhost:8000/docs` (Local) / `/docs` (Deployed)
 - **Local Application URL**: `http://localhost:5173`
 
 ---
@@ -31,7 +33,7 @@
 
 ## 🎯 Executive Summary
 
-WardFlow is a focused, production-grade web application designed for hospital receptionists, ward nurses, and administrative staff managing inpatient admissions. Inspired by DScribe's product philosophy of eliminating paper documentation while keeping hospital workflows fast and intuitive, WardFlow removes unnecessary cognitive overhead and delivers an efficient, reliable, and accessible admission directory.
+WardFlow is a focused, dependable web application designed for hospital receptionists, ward nurses, and administrative staff managing inpatient admissions. Inspired by DScribe's product philosophy of eliminating paper documentation while keeping hospital workflows fast and intuitive, WardFlow removes unnecessary cognitive overhead and delivers an efficient, reliable, and accessible admission directory.
 
 ---
 

@@ -5,6 +5,8 @@ import { formatDateReadable } from '../utils/date';
 export default function PatientTable({
   patients,
   isLoading,
+  systemStatus,
+  onRetry,
   onEdit,
   onDischargeClick,
   onDeleteClick,
@@ -19,6 +21,23 @@ export default function PatientTable({
         <div className="spinner" />
         <h3 className="state-title">Loading patient records...</h3>
         <p className="state-description">Retrieving admission data from the database.</p>
+      </div>
+    );
+  }
+
+  if (systemStatus === 'error' && patients.length === 0) {
+    return (
+      <div className="state-container">
+        <div className="state-icon-circle" style={{ background: 'var(--warning-bg)', color: 'var(--warning-text)' }}>
+          <Bed size={28} />
+        </div>
+        <h3 className="state-title">Connecting to hospital service...</h3>
+        <p className="state-description">
+          The demonstration backend is waking up from free-tier sleep (typically takes 30–50 seconds on cold start).
+        </p>
+        <button type="button" className="btn btn-primary" onClick={onRetry}>
+          Retry Connection
+        </button>
       </div>
     );
   }

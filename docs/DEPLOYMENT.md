@@ -1,48 +1,46 @@
-# WardFlow Deployment Guide
+# WardFlow Production Deployment Reference
 
-This guide details the deployment steps for hosting WardFlow on **Render** (Frontend Static Site + Backend Web Service) and **Neon** (Serverless PostgreSQL).
+This document records the verified production deployment architecture and live endpoints for WardFlow on **Render** and **Neon PostgreSQL**.
 
-## 1. Neon PostgreSQL Setup
+---
 
-1. Sign in to [Neon Console](https://console.neon.tech/).
-2. Create a new project named `wardflow-db`.
-3. Copy the connection string provided (format: `postgresql://[user]:[password]@[endpoint].neon.tech/wardflow?sslmode=require`).
-4. Note: Neon requires SSL mode (`sslmode=require`), which is supported out-of-the-box by our SQLAlchemy configuration.
+## 1. Verified Live Production Services
 
-## 2. Render Backend Web Service
+| Service | Type | Live URL | Deployed Service Name |
+|---|---|---|---|
+| **Frontend Web App** | Render Static Site | [https://wardflow-patient-management.onrender.com](https://wardflow-patient-management.onrender.com) | `wardflow-patient-management` |
+| **Backend REST API** | Render Web Service (Python FastAPI) | [https://wardflow-app.onrender.com](https://wardflow-app.onrender.com) | `wardflow-app` |
+| **API Documentation (Swagger)** | Interactive OpenAPI Docs | [https://wardflow-app.onrender.com/docs](https://wardflow-app.onrender.com/docs) | — |
+| **Database Engine** | Neon Serverless PostgreSQL | Parameterized `DATABASE_URL` via Render | `wardflow-db` |
 
-1. Create a **New Web Service** connected to your GitHub repository.
-2. Configure settings:
-   - **Name**: `wardflow-api`
-   - **Root Directory**: `backend`
-   - **Runtime**: `Python 3`
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - **Plan**: Free
-3. Environment Variables:
-   - `DATABASE_URL`: `[Your Neon PostgreSQL Connection String]`
-   - `APP_ENV`: `production`
-   - `ALLOWED_ORIGINS`: `https://wardflow.onrender.com,http://localhost:5173`
-4. Health Check Path: `/api/health`
+---
 
-## 3. Render Frontend Static Site
+## 2. Production Service Configuration
 
-1. Create a **New Static Site** connected to the same repository.
-2. Configure settings:
-   - **Name**: `wardflow-app`
-   - **Root Directory**: `frontend`
-   - **Build Command**: `npm install && npm run build`
-   - **Publish Directory**: `dist`
-3. Environment Variables:
-   - `VITE_API_BASE_URL`: `https://wardflow-api.onrender.com`
-4. Redirects / Rewrites:
-   - Source: `/*`
-   - Destination: `/index.html`
-   - Action: `Rewrite`
+### Backend: `wardflow-app`
+- **Root Directory**: `backend`
+- **Runtime**: `Python 3.12 / 3.13`
+- **Build Command**: `pip install -r requirements.txt`
+- **Start Command**: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
+- **Health Check**: `/api/health`
+- **Environment Variables**:
+  - `APP_ENV`: `production`
+  - `DATABASE_URL`: `postgresql://[user]:[password]@[endpoint].neon.tech/wardflow?sslmode=require`
+  - `ALLOWED_ORIGINS`: `https://wardflow-patient-management.onrender.com,http://localhost:5173`
 
-## 4. Verification Checklist
+### Frontend: `wardflow-patient-management`
+- **Root Directory**: `frontend`
+- **Build Command**: `npm install && npm run build`
+- **Publish Directory**: `dist`
+- **Routing**: SPA Rewrite Rule `/*` -> `/index.html`
+- **Environment Variables**:
+  - `VITE_API_BASE_URL`: `https://wardflow-app.onrender.com`
 
-- [ ] Check `GET /api/health` returns `{"status": "healthy", "database": "connected"}`.
-- [ ] Verify CORS headers allow requests from frontend domain.
-- [ ] Admit a patient in the production UI and verify persistence upon page refresh.
-- [ ] Verify test suite against staging environment.
+---
+
+## 3. Operational Verification
+
+1. **Database Connectivity**: `GET /api/health` returns `{"status":"healthy","database":"connected","environment":"production"}`.
+2. **CORS Headers**: Explicitly allows `https://wardflow-patient-management.onrender.com` with `access-control-allow-credentials: true`.
+3. **Fail-Fast Protection**: Production mode prohibits accidental SQLite fallback; an invalid or missing `DATABASE_URL` raises an explicit runtime error on cold start rather than creating an ephemeral local file.
+4. **Data Persistence**: Records are committed to hosted Neon PostgreSQL and remain persistent across backend deployments, cold starts, and container restarts.

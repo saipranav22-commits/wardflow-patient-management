@@ -8,6 +8,13 @@ let rawBase = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/+$/, '
 if (rawBase.endsWith('/api')) {
   rawBase = rawBase.slice(0, -4);
 }
+// Robust fallback: if pointing to older wardflow-api placeholder or empty on Render, route to live wardflow-app backend
+if (
+  rawBase === 'https://wardflow-api.onrender.com' ||
+  (!rawBase && typeof window !== 'undefined' && window.location.hostname.includes('onrender.com'))
+) {
+  rawBase = 'https://wardflow-app.onrender.com';
+}
 const API_BASE_URL = rawBase;
 
 class ApiError extends Error {

@@ -296,6 +296,42 @@ export default function App() {
       />
 
       <main>
+        {/* Cold Start / Connection Warning Banner */}
+        {systemStatus === 'error' && (
+          <div
+            style={{
+              background: 'var(--warning-bg)',
+              color: 'var(--warning-text)',
+              border: '1px solid var(--warning-border)',
+              borderRadius: 'var(--radius-md)',
+              padding: '1rem 1.25rem',
+              marginBottom: '1.5rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '1rem',
+              flexWrap: 'wrap',
+            }}
+            role="alert"
+          >
+            <div>
+              <strong>Demo server is waking up:</strong> Render free-tier services spin down after inactivity and may take 30–50 seconds to wake up on the first visit.
+            </div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setSystemStatus('connecting');
+                loadInitialData();
+                loadPatients();
+              }}
+              style={{ fontSize: '0.8125rem', padding: '0.4rem 0.8rem', minHeight: '34px' }}
+            >
+              Retry Connection
+            </button>
+          </div>
+        )}
+
         {/* Metric Cards */}
         <StatsCards stats={stats} isLoading={isLoading && patients.length === 0} />
 
@@ -313,6 +349,12 @@ export default function App() {
           <PatientTable
             patients={patients}
             isLoading={isLoading}
+            systemStatus={systemStatus}
+            onRetry={() => {
+              setSystemStatus('connecting');
+              loadInitialData();
+              loadPatients();
+            }}
             onEdit={handleEdit}
             onDischargeClick={handleDischargeClick}
             onDeleteClick={handleDeleteClick}
